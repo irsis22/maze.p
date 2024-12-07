@@ -1,0 +1,340 @@
+from pygame import*
+import pygame
+import sys
+
+# Classe pai para outros sprites
+class GameSprite(sprite.Sprite):
+  # Construtor da classe
+  def __init__(self, player_image, player_x, player_y, size_x, size_y):
+      # Chamando o construtor da classe Sprite
+      sprite.Sprite.__init__(self)
+ 
+      # Cada sprite deve armazenar uma imagem como propriedade
+      self.image = transform.scale(image.load(player_image), (size_x, size_y))
+
+      # Cada sprite deve armazenar uma propriedade 'rect' (retângulo em que está inscrito)
+      self.rect = self.image.get_rect()
+      self.rect.x = player_x
+      self.rect.y = player_y
+
+# Set up the screen
+screen = pygame.display.set_mode((800, 600))
+
+# Set up colors
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+BLUE = (0, 0, 255)
+
+# Define the leader's and follower's attributes
+leader_pos = pygame.Vector2(400, 300)
+follower_pos = pygame.Vector2(100, 100)
+follower_speed = 2  # Speed at which the follower follows the leader
+# Classe principal para o jogador
+class Player(GameSprite):
+  # Método que implementa o controle do sprite pelas setas do teclado
+  def __init__(self, player_image, player_x, player_y, size_x, size_y, player_x_speed, player_y_speed):
+      # Chamando o construtor da classe GameSprite
+      GameSprite.__init__(self, player_image, player_x, player_y, size_x, size_y)
+
+      # Velocidade do jogador em X e Y
+      self.x_speed = player_x_speed
+      self.y_speed = player_y_speed
+
+  # Método que atualiza a posição do jogador com base na velocidade
+  def update(self):
+       # Movimenta o personagem horizontalmente
+       if hero.rect.x <= win_width-80 and hero.x_speed > 0 or hero.rect.x >= 0 and hero.x_speed < 0:
+         self.rect.x += self.x_speed
+       # Checa colisão com barreiras após movimento horizontal
+       platforms_touched = sprite.spritecollide(self, barriers, False)
+       if self.x_speed > 0:  # Indo para a direita
+           for p in platforms_touched:
+               self.rect.right = min(self.rect.right, p.rect.left) 
+       elif self.x_speed < 0:  # Indo para a esquerda
+           for p in platforms_touched:
+               self.rect.left = max(self.rect.left, p.rect.right)
+       
+       # Movimenta o personagem verticalmente
+       if hero.rect.y <= win_height-80 and hero.y_speed > 0 or hero.rect.y >= 0 and hero.y_speed < 0:
+         self.rect.y += self.y_speed
+       # Checa colisão com barreiras após movimento vertical
+       platforms_touched = sprite.spritecollide(self, barriers, False)
+       if self.y_speed > 0:  # Indo para baixo
+           for p in platforms_touched:
+               self.y_speed = 0
+               if p.rect.top < self.rect.bottom:
+                   self.rect.bottom = p.rect.top
+       elif self.y_speed < 0:  # Indo para cima
+           for p in platforms_touched:
+               self.y_speed = 0
+               self.rect.top = max(self.rect.top, p.rect.bottom)
+
+  # Método de disparo do jogador (cria uma bala na posição atual do jogador)
+  def fire(self):
+      grenade = grenade('grenade.png', self.rect.centerx, self.rect.top, 15, 20, 15)
+      grenade.add(grenade)
+
+# Classe de inimigo
+class Enemy(GameSprite):
+  side = "left"  # Direção inicial do inimigo
+  def __init__(self, player_image, player_x, player_y, size_x, size_y, player_speed):
+      # Chamando o construtor da classe GameSprite
+      GameSprite.__init__(self, player_image, player_x, player_y, size_x, size_y)
+      self.speed = player_speed
+
+  # Movimento do inimigo (zig-zag horizontal)
+  def update(self):
+      if self.rect.x <= 420:  # Limite esquerdo
+          self.side = "right"
+      if self.rect.x >= win_width - 85:  # Limite direito
+          self.side = "left"
+      if self.side == "left":
+          self.rect.x -= self.speed
+      else:
+          self.rect.x += self.speed
+
+  # Movimento da bala
+  def update(self):
+      self.rect.x += self.speed
+      # A bala desaparece ao atingir a borda da tela
+      if self.rect.x > win_width+10:
+          self.kill()
+# Inicializando o pygame
+pygame.init()
+
+# Configurações da tela
+LARGURA_TELA, ALTURA_TELA = 800, 600  # Define as dimensões da tela do jogo
+tela = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))  # Cria a janela do jogo
+pygame.display.set_caption("Projétil Guiado com Classes")  # Define o título da janela
+
+# Definição de cores (RGB)
+BRANCO = (255, 255, 255)  # Cor de fundo
+PRETO = (0, 0, 0)  # Cor do projétil
+VERMELHO = (255, 0, 0)  # Cor do inimigo
+AZUL = (0, 0, 255)  # Cor do herói
+
+# Classe para o herói (controlado pelo jogador)
+class Hero(pygame.sprite.Sprite):
+    def __init__(self, x, y, largura, altura, cor):
+        super().__init__()
+        # Cria a superfície para representar o herói
+        self.image = pygame.Surface((largura, altura))
+        self.image.fill(cor)  # Preenche com a cor do herói
+        self.rect = self.image.get_rect()  # Obtém o retângulo da superfície
+        self.rect.topleft = (x, y)  # Define a posição inicial
+        self.velocidade = 5  # Define a velocidade do movimento
+
+    def mover(self, x, y):
+        """Move o herói na direção especificada."""
+        self.rect.x += x  # Move no eixo X
+        self.rect.y += y  # Move no eixo Y
+
+
+    def atualizar(self, alvo):
+        """Move o inimigo em direção ao herói."""
+        if self.rect.centery < alvo.rect.centery:  # Move para baixo se estiver acima do herói
+            self.rect.y += self.velocidade
+        elif self.rect.centery > alvo.rect.centery:  # Move para cima se estiver abaixo do herói
+            self.rect.y -= self.velocidade
+
+        if self.rect.left < alvo.rect.left:  # Move para a direita se estiver à esquerda do herói
+            self.rect.x += self.velocidade
+        elif self.rect.left > alvo.rect.left:  # Move para a esquerda se estiver à direita do herói
+            self.rect.x -= self.velocidade
+
+    def colisao_heroi(self, heroi):
+        """Verifica se o inimigo colidiu com o herói."""
+        return self.rect.colliderect(heroi.rect)  # Retorna True se houver colisão
+
+
+# Função para exibir mensagens na tela (vitória ou derrota)
+def exibir_mensagem(msg):
+    # Define a fonte e cria o texto
+    fonte = pygame.font.Font(None, 74)
+    texto = fonte.render(msg, True, (0, 0, 0))
+    texto_rect = texto.get_rect(center=(LARGURA_TELA // 2, ALTURA_TELA // 2))
+    tela.fill(BRANCO)  # Limpa a tela
+    tela.blit(texto, texto_rect)  # Exibe o texto
+    pygame.display.flip()
+
+    # Aguarda até que o usuário clique para fechar
+    esperando = True
+    while esperando:
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if evento.type == pygame.MOUSEBUTTONDOWN:
+                esperando = False
+
+# Instancia o herói e o inimigo
+hero = Hero(50, ALTURA_TELA // 2 - 50, 50, 100, AZUL)  # Define o herói
+enemy = Enemy(LARGURA_TELA - 100, ALTURA_TELA // 2 - 50, 50, 100, VERMELHO, 1)  # Define o inimigo
+
+# Grupos de sprites (para facilitar a atualização e renderização)
+grupo_sprites = pygame.sprite.Group()
+grupo_sprites.add(hero)  # Adiciona o herói ao grupo
+grupo_sprites.add(enemy)  # Adiciona o inimigo ao grupo
+
+grupo_grenade = pygame.sprite.Group()  # Grupo separado para os projéteis
+
+# Relógio para controlar os frames por segundo (FPS)
+relogio = pygame.time.Clock()
+
+# Loop principal do jogo
+while True:
+    # Processa eventos do jogo
+    for evento in pygame.event.get():
+        if evento.type == pygame.QUIT:  # Fecha o jogo se o usuário clicar no "X"
+            pygame.quit()
+            sys.exit()
+        if evento.type == pygame.KEYDOWN:  # Detecta teclas pressionadas
+            if evento.key == pygame.K_SPACE:  # Dispara um projétil ao pressionar espaço
+                grenade = hero.disparar()
+                grupo_grenade.add(grenade)
+                grupo_sprites.add(grenade)
+
+    # Movimenta o herói com as setas
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT]:  # Move para a esquerda
+        hero.mover(-hero.velocidade, 0)
+    if keys[pygame.K_RIGHT]:  # Move para a direita
+        hero.mover(hero.velocidade, 0)
+    if keys[pygame.K_UP]:  # Move para cima
+        hero.mover(0, -hero.velocidade)
+    if keys[pygame.K_DOWN]:  # Move para baixo
+        hero.mover(0, hero.velocidade)
+
+    # Atualiza o estado do inimigo para seguir o herói
+    enemy.atualizar(hero)
+
+    # Verifica colisões entre projéteis e o inimigo
+    for projetil in grupo_grenade:
+        projetil.atualizar(enemy)
+        if pygame.sprite.collide_rect(grenade, hero):  # Colisão com projétil
+            grenade.kill()
+            enemy.kill()
+            exibir_mensagem("You Win!")  # Exibe mensagem de vitória
+            pygame.quit()
+            sys.exit()
+
+    # Verifica se o inimigo colidiu com o herói
+    if enemy.colisao_hero(hero):
+        exibir_mensagem("You Lose!")  # Exibe mensagem de derrota
+        pygame.quit()
+        sys.exit()
+
+    # Atualiza a tela
+    tela.fill(BRANCO)  # Preenche a tela com a cor de fundo
+    grupo_sprites.draw(tela)  # Desenha todos os sprites na tela
+
+    pygame.display.flip()  # Atualiza o display
+    relogio.tick(60)  # Mantém a taxa de atualização em 60 FPS
+   # Criando a janela do jogo
+    win_width = 700
+    win_height = 50
+    display.set_caption("Maze Game")  # Título da janela
+    window = display.set_mode((win_width, win_height))
+    back = (119, 210, 223)  # Define a cor de fundo no esquema RGB
+
+# Criando um grupo para as barreiras
+    barriers = sprite.Group()
+
+# Criando um grupo para as balas
+    grenade = sprite.Group()
+
+# Criando um grupo para os monstros
+    enemy = sprite.Group()
+
+# Criando as barreiras (paredes do labirinto)
+    w1 = GameSprite('platform2.png', win_width / 2 - win_width / 3, win_height / 2, 300, 50)
+    w2 = GameSprite('platform2_v.png', 370, 100, 50, 400)
+
+# Adiciona as barreiras ao grupo
+    barriers.add(w1)
+    barriers.add(w2)
+
+# Criando os sprites principais
+    hero = Player('hero.png', 5, win_height - 80, 80, 80, 0, 0)
+    enemy = Enemy('cyborg.png', win_width - 80, 180, 80, 80, 5)
+    final_sprite = GameSprite('prize.png', win_width - 85, win_height - 100, 80, 80)
+
+# Adiciona o monstro ao grupo
+    enemy.add(enemy)
+
+# Variável que indica se o jogo terminou
+    finish = False
+# Loop principal do jogo
+    run = True
+    while run:
+  # Loop executa a cada 0.05 segundos
+    time.delay(50)
+   # Itera pelos eventos que podem ter ocorrido
+     for e in event.get():
+       if e.type == QUIT:
+           run = False
+       elif e.type == KEYDOWN:  # Pressionar tecla
+           if e.key == K_LEFT:
+               hero.x_speed = -5
+           elif e.key == K_RIGHT:
+               hero.x_speed = 5
+           elif e.key == K_UP:
+               hero.y_speed = -5
+           elif e.key == K_DOWN:
+               hero.y_speed = 5
+           elif e.key == K_SPACE:
+              hero.fire()
+       elif e.type == KEYUP:  # Soltar tecla
+           if e.key == K_LEFT:
+               hero.x_speed = 0
+           elif e.key == K_RIGHT:
+               hero.x_speed = 0 
+           elif e.key == K_UP:
+               hero.y_speed = 0
+           elif e.key == K_DOWN:
+               hero.y_speed = 0
+
+  # Verifica se o jogo ainda não terminou
+      if not finish:
+      # Atualiza o fundo em cada iteração
+      window.fill(back)
+      
+      # Atualiza os movimentos e desenha os sprites
+      hero.update()
+      grenade.update()
+
+      hero.reset()
+      grenade.draw(window)
+      barriers.draw(window)
+      final_sprite.reset()
+
+      # Colisão entre monstros e balas
+      sprite.groupcollide(enemy, grenade, True, True)
+      enemy.update()
+      enemy.draw(window)
+      sprite.groupcollide(grenade , platform, True, False)
+      # Verifica colisões do jogador com inimigos ou barreiras
+      if sprite.spritecollide(hero, enemy, False):
+          finish = True
+          # Exibe tela de derrota
+          img = image.load('bad endin2.png')
+          d = img.get_width() // img.get_height()
+          window.fill((255, 255, 255))
+          window.blit(transform.scale(img, (win_height * d, win_height)), (90, 0))
+
+      if sprite.spritecollide(hero, grenade, False):
+          finish = True
+          # Exibe tela de derrota
+          img = image.load('bad ending1.png')
+          d = img.get_width() // img.get_height()
+          window.fill((255, 255, 255))
+          window.blit(transform.scale(img, (win_height * d, win_height)), (90, 0))
+
+      if sprite.collide_rect(hero, final_sprite):
+          finish = True
+          # Exibe tela de vitória
+          imgage = image.load('happy ending.jpg')
+          window.fill((255, 255, 255))
+          window.blit(transform.scale(img, (win_width, win_height)), (0, 0))
+ 
+    display.update()
